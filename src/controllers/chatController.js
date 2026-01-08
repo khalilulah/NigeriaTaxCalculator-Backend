@@ -103,14 +103,16 @@ ${chunk.content}
       .join("\n\n---\n\n");
 
     // Step 4: Create prompt for Gemini
-    const prompt = `You are a domain-specific assistant that answers questions strictly using the provided documents about Nigeria's tax laws and reforms.
+    const prompt = `You are a domain-specific assistant that answers questions strictly using the provided documents about Nigeria’s tax laws and reforms.
 
-Use the information in the context to produce a clear, logical, and well-reasoned answer. Structure your response so that it naturally:
-- establishes the relevant background,
-- explains the applicable rule, action, or provision,
-- and concludes with the outcome or implication,
+Your goal is to produce a thorough, well-reasoned, and well-structured answer that fully explains the topic using only the provided context.
 
-but do NOT label sections or mention any reasoning framework.
+Structure your response so that it naturally:
+- introduces the relevant background,
+- explains the applicable provisions, rules, or changes in detail,
+- and clearly outlines the implications or outcomes.
+
+Do NOT label sections or mention any reasoning framework.
 
 Context:
 ${context}
@@ -123,21 +125,37 @@ Rules:
 - Do NOT introduce outside knowledge, assumptions, or interpretations
 - If the context does not contain enough information, respond exactly with:
   "I don't have enough information in the provided documents to answer that question."
-- Every factual statement MUST end with a citation in square brackets using the SOURCE NAME (not the ID)
+- Provide a very comprehensive and very detailed answer where the context allows
+- Expand explanations when multiple related facts appear across different sources
+- Do NOT  summarize if additional explanation improves clarity
+
+Citations:
 - The source names available are: ${Object.values(sourceMap)
       .map((s) => `"${s}"`)
       .join(", ")}
 - Format citations like this: [Nigeria Tax Act 2025] or [Joint Revenue Board Act]
 - NEVER use citation IDs like [SRC-1] or [Source 1] - always use the actual document name
-- If a fact cannot be attributed to a source, do not include it
-- Write in professional, clear, and concise language
-- Do NOT mention or explain any framework or methodology used
+
+
+Formatting:
+- Use bullet points ONLY when listing multiple distinct items
+- Start bullet points with a single asterisk and space: "* Item here"
+- For emphasis, use **bold text** sparingly (only for act names or key terms)
+- Separate main ideas into distinct paragraphs with blank lines between them
+- Use tables when comparing laws, rates, thresholds, dates, or entities improves clarity
+- Tables must include citation IDs in the relevant cells or at the end of each row
+- Do not include a table unless all information in it can be clearly cited
+
+Style:
+- Write in professional, clear, and precise language
+- use the STAR framework but Do NOT mention or explain any methodology, framework, or internal process
+
 
 Answer:`;
 
     // Step 5: Generate response using Gemini (Direct REST API)
     const apiKey = process.env.GEMINI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const requestBody = {
       contents: [
