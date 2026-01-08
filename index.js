@@ -2,10 +2,12 @@ import express from "express";
 import mongoose from "mongoose";
 import { config } from "dotenv";
 import { chat } from "./src/controllers/chatController.js";
+import cors from "cors";
 
 config();
 
 const app = express();
+app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 // Middleware

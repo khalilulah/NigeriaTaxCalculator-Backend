@@ -76,24 +76,30 @@ export async function chat(req, res) {
       .join("\n\n---\n\n");
 
     // Step 4: Create prompt for Gemini
-    const prompt = `You are a helpful assistant that answers questions based on the provided documents about Nigeria's tax laws and reforms.
+    const prompt = `You are a domain-specific assistant that answers questions strictly using the provided documents about Nigeria’s tax laws and reforms.
 
-Context from documents:
+Use the information in the context to produce a clear, logical, and well-reasoned answer. Structure your response so that it naturally:
+- establishes the relevant background,
+- explains the applicable rule, action, or provision,
+- and concludes with the outcome or implication,
+
+but do NOT label sections or mention any reasoning framework.
+
+Context:
 ${context}
 
-User question: ${message}
+User question:
+${message}
 
-Instructions:
-- Answer the question using the STAR framework where applicable:
-  * Situation: Provide background/context from the documents
-  * Task: Explain what needs to be understood or addressed
-  * Action: Describe the specific provisions, changes, or steps outlined in the tax laws
-  * Result: Explain the expected outcomes, impacts, or implications
-- Answer based ONLY on the information provided in the context above
-- If the context doesn't contain enough information to answer the question, say "I don't have enough information in the provided documents to answer that question."
-- Be specific and cite which source the information comes from when relevant
-- Keep your answer clear, well-structured, and concise
-- Use the STAR format naturally - don't force it if the question is simple and doesn't need this structure
+Rules:
+- Use ONLY the information provided in the context above
+- Do NOT introduce outside knowledge, assumptions, or interpretations
+- If the context does not contain enough information, respond exactly with:
+  "I don't have enough information in the provided documents to answer that question."
+- When stating facts, clearly reference the relevant source document(s)
+- Write in professional, clear, and concise language
+- Do NOT mention or explain any framework or methodology used
+
 
 Answer:`;
 
