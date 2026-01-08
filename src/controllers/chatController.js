@@ -32,20 +32,31 @@ function cosineSimilarity(vecA, vecB) {
 
 // Function to find relevant document chunks
 async function findRelevantChunks(queryEmbedding, topK = 5) {
-  // Get all chunks from database
-  const allChunks = await DocumentChunk.find({});
+  const results = await DocumentChunk.aggregate([
+    {
+      $vectorSearch: {
+        index: "vector_index",
+        path: "embedding",
+        queryVector: queryEmbedding,
+        numCandidates: 50,
+        limit: topK,
+      },
+    },
+    {
+      $project: {
+        content: 1,
+        source: 1,
+        score: { $meta: "vectorSearchScore" },
+      },
+    },
+  ]);
 
-  // Calculate similarity scores
-  const chunksWithScores = allChunks.map((chunk) => ({
+  return results.map((chunk, i) => ({
+    id: `SRC-${i + 1}`,
     content: chunk.content,
     source: chunk.source,
-    similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
+    similarity: chunk.score,
   }));
-
-  // Sort by similarity and return top K
-  return chunksWithScores
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, topK);
 }
 
 // Main chat function
@@ -70,13 +81,29 @@ export async function chat(req, res) {
       `Top similarity score: ${relevantChunks[0]?.similarity.toFixed(4)}`
     );
 
-    // Step 3: Build context from relevant chunks
+    // Step 3: Create a mapping of citation IDs to clean source names
+    const sourceMap = {};
+    relevantChunks.forEach((chunk, index) => {
+      const citationId = `SRC-${index + 1}`;
+      // Remove .pdf extension and clean up the filename
+      const cleanSourceName = chunk.source.replace(/\.pdf$/i, "");
+      sourceMap[citationId] = cleanSourceName;
+    });
+
+    // Step 3b: Build context from relevant chunks
     const context = relevantChunks
-      .map((chunk, i) => `[Source ${i + 1}: ${chunk.source}]\n${chunk.content}`)
+      .map(
+        (chunk, index) => `
+[SRC-${index + 1}]
+Source: ${chunk.source.replace(/\.pdf$/i, "")}
+Content:
+${chunk.content}
+`
+      )
       .join("\n\n---\n\n");
 
     // Step 4: Create prompt for Gemini
-    const prompt = `You are a domain-specific assistant that answers questions strictly using the provided documents about Nigeria’s tax laws and reforms.
+    const prompt = `You are a domain-specific assistant that answers questions strictly using the provided documents about Nigeria's tax laws and reforms.
 
 Use the information in the context to produce a clear, logical, and well-reasoned answer. Structure your response so that it naturally:
 - establishes the relevant background,
@@ -96,10 +123,15 @@ Rules:
 - Do NOT introduce outside knowledge, assumptions, or interpretations
 - If the context does not contain enough information, respond exactly with:
   "I don't have enough information in the provided documents to answer that question."
-- When stating facts, clearly reference the relevant source document(s)
+- Every factual statement MUST end with a citation in square brackets using the SOURCE NAME (not the ID)
+- The source names available are: ${Object.values(sourceMap)
+      .map((s) => `"${s}"`)
+      .join(", ")}
+- Format citations like this: [Nigeria Tax Act 2025] or [Joint Revenue Board Act]
+- NEVER use citation IDs like [SRC-1] or [Source 1] - always use the actual document name
+- If a fact cannot be attributed to a source, do not include it
 - Write in professional, clear, and concise language
 - Do NOT mention or explain any framework or methodology used
-
 
 Answer:`;
 
@@ -143,14 +175,10 @@ Answer:`;
     res.json({
       answer: response,
       sources: relevantChunks.map((chunk) => ({
-        source: chunk.source,
+        source: chunk.source.replace(/\.pdf$/i, ""), // Remove .pdf extension
         similarity: chunk.similarity.toFixed(4),
       })),
     });
-
-    console.log("Response generated successfully\n");
-
-    // Return response with sources
   } catch (error) {
     console.error("Error in chat:", error);
     res
