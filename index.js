@@ -24,6 +24,10 @@ app.get("/", (req, res) => {
   res.json({ message: "Nigeria Tax Chatbot API" });
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.post("/chat", chat);
 
 // Start server
