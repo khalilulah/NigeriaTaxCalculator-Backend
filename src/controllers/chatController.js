@@ -83,23 +83,18 @@ export async function chat(req, res) {
 
     // Step 3: Create a mapping of citation IDs to clean source names
     const sourceMap = {};
-    relevantChunks.forEach((chunk, index) => {
-      const citationId = `SRC-${index + 1}`;
-      // Remove .pdf extension and clean up the filename
-      const cleanSourceName = chunk.source.replace(/\.pdf$/i, "");
-      sourceMap[citationId] = cleanSourceName;
-    });
-
-    // Step 3b: Build context from relevant chunks
     const context = relevantChunks
-      .map(
-        (chunk, index) => `
-[SRC-${index + 1}]
-Source: ${chunk.source.replace(/\.pdf$/i, "")}
+      .map((chunk, index) => {
+        const cleanSourceName = chunk.source.replace(/\.pdf$/i, "");
+        sourceMap[`SRC-${index + 1}`] = cleanSourceName;
+
+        // Use the ACTUAL source name in the context, not SRC-X
+        return `
+[${cleanSourceName}]
 Content:
 ${chunk.content}
-`
-      )
+`;
+      })
       .join("\n\n---\n\n");
 
     // Step 4: Create prompt for Gemini
@@ -128,12 +123,18 @@ Core Rules (MANDATORY):
   "I don't have enough information in the provided documents to answer that question."
 - Every factual statement MUST end with a citation.
 - If a statement cannot be clearly attributed to a source, do NOT include it.
+-If and only if the provided documents contain explicit tax rates, bands,
+or formulas applicable to the income described,
+the response must begin by stating the calculated tax amount.
+Otherwise, return the fallback sentence exactly.
 
 Depth & Explanation Requirements:
-- Provide a comprehensive and detailed answer where the context allows.
-- Expand explanations when multiple related facts appear across different documents.
+- Provide a detailed answer where the context allows.
 - Do NOT summarize if additional explanation improves clarity.
 - Explain relationships, changes, and implications explicitly when supported by the documents.
+
+
+
 
 Citation Rules (STRICT):
 - Use ONLY the actual document names as citations.

@@ -152,7 +152,7 @@ async function main() {
     console.log("Connected to MongoDB\n");
 
     // Clear existing documents (optional - remove if you want to keep old data)
-    await DocumentChunk.deleteMany({});
+    // await DocumentChunk.deleteMany({});
     console.log("Cleared existing documents\n");
 
     // Path to your PDFs folder
@@ -169,6 +169,8 @@ async function main() {
     const files = fs
       .readdirSync(pdfFolder)
       .filter((file) => file.toLowerCase().endsWith(".pdf"))
+      // Add this line to only process your new file:
+      .filter((file) => file === "Nigeria-Tax-Act.pdf") // ← Change filename
       .map((file) => path.join(pdfFolder, file));
 
     if (files.length === 0) {
